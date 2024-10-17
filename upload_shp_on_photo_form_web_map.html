@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shapefile Upload and Display</title>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.21/esri/themes/light/main.css">
+  <script src="https://js.arcgis.com/4.21/"></script>
+</head>
+<body>
+  <h2>Upload a Shapefile to Overlay on the Web Map</h2>
+  <!-- File input for shapefile upload -->
+  <input type="file" id="shapefile-input" accept=".zip">
+  
+  <!-- Map will already be embedded from Experience Builder, no need to create a new one here -->
+
+  <script>
+    require([
+      "esri/Map",
+      "esri/views/MapView",
+      "esri/layers/GraphicsLayer",
+      "esri/layers/FeatureLayer",
+      "esri/layers/GeoJSONLayer",
+      "esri/request",
+      "esri/geometry/projection",
+      "esri/geometry/SpatialReference",
+      "esri/layers/GraphicsLayer"
+    ], function(Map, MapView, GraphicsLayer, FeatureLayer, GeoJSONLayer, esriRequest, projection, SpatialReference, GraphicsLayer) {
+
+      // Get the Web Map and view from Experience Builder (it is already loaded)
+      var map = window.__map; // Access the existing map from Experience Builder
+      var view = window.__view; // Access the existing MapView from Experience Builder
+
+      // Create a graphics layer for the shapefile
+      var graphicsLayer = new GraphicsLayer();
+      map.add(graphicsLayer);  // Add the new layer to the same Web Map
+
+      // Step 2: Listen for file input and handle shapefile upload
+      document.getElementById("shapefile-input").addEventListener("change", function(event) {
+        var file = event.target.files[0];
+        
+        if (file) {
+          var formData = new FormData();
+          formData.append("file", file);
+
+          // Step 3: Use esriRequest to upload and extract shapefile contents
+          esriRequest("https://utility.arcgis.com/shapefile", {
+            method: "post",
+            body: formData,
+            responseType: "json"
+          }).then(function(response) {
+            // Step 4: Process the returned data (convert GeoJSON to a layer)
+            var geoJsonData = response.data;
+
+            // Create a new GeoJSON layer with the uploaded shapefile data
+            var geojsonLayer = new GeoJSONLayer({
+              source: geoJsonData,
+              renderer: {
+                type: "simple",
+                symbol: {
+                  type: "simple-fill",
+                  color: [255, 0, 0, 0.2],
+                  outline: {
+                    color: [255, 0, 0],
+                    width: 1
+                  }
+                }
+              }
+            });
+
+            // Add the shapefile data as a new layer to the existing Web Map
+            map.add(geojsonLayer);
+
+            // Zoom to the extent of the newly added shapefile data
+            view.goTo(geojsonLayer.fullExtent);
+          }).catch(function(error) {
+            console.error("Error uploading shapefile:", error);
+          });
+        }
+      });
+    });
+  </script>
+</body>
+</html>
